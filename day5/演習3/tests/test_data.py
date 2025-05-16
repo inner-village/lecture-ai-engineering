@@ -8,10 +8,7 @@ import great_expectations as gx
 warnings.filterwarnings("ignore")
 
 # テスト用データパスを定義
-DATA_PATH = os.path.join(
-    os.path.dirname(__file__),
-    "../data/Titanic.csv"
-)
+DATA_PATH = os.path.join(os.path.dirname(__file__), "../data/Titanic.csv")
 
 
 @pytest.fixture
@@ -29,8 +26,14 @@ def test_data_exists(sample_data):
 def test_data_columns(sample_data):
     """必要なカラムが存在することを確認"""
     expected_columns = [
-        "Pclass", "Sex", "Age", "SibSp",
-        "Parch", "Fare", "Embarked", "Survived"
+        "Pclass",
+        "Sex",
+        "Age",
+        "SibSp",
+        "Parch",
+        "Fare",
+        "Embarked",
+        "Survived",
     ]
     for col in expected_columns:
         assert (
@@ -53,9 +56,8 @@ def test_data_types(sample_data):
         ), f"カラム '{col}' がカテゴリカル型ではありません"
 
     survived_vals = sample_data["Survived"].dropna().unique()
-    assert (
-        set(survived_vals).issubset({"0", "1"})
-        or set(survived_vals).issubset({0, 1})
+    assert set(survived_vals).issubset({"0", "1"}) or set(survived_vals).issubset(
+        {0, 1}
     ), "Survivedカラムには0, 1のみ含まれるべきです"
 
 
@@ -64,8 +66,7 @@ def test_missing_values_acceptable(sample_data):
     for col in sample_data.columns:
         missing_rate = sample_data[col].isna().mean()
         assert missing_rate < 0.8, (
-            f"カラム '{col}' の欠損率が80%を超えています: "
-            f"{missing_rate:.2%}"
+            f"カラム '{col}' の欠損率が80%を超えています: " f"{missing_rate:.2%}"
         )
 
 
@@ -77,13 +78,16 @@ def test_value_ranges(sample_data):
     batch_definition = data_asset.add_batch_definition_whole_dataframe(
         "batch definition"
     )
-    batch = batch_definition.get_batch(
-        batch_parameters={"dataframe": sample_data}
-    )
+    batch = batch_definition.get_batch(batch_parameters={"dataframe": sample_data})
 
     required_columns = [
-        "Pclass", "Sex", "Age", "SibSp",
-        "Parch", "Fare", "Embarked"
+        "Pclass",
+        "Sex",
+        "Age",
+        "SibSp",
+        "Parch",
+        "Fare",
+        "Embarked",
     ]
     missing_columns = [
         col for col in required_columns if col not in sample_data.columns
