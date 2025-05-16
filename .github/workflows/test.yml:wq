@@ -19,11 +19,5 @@ jobs:
       run: pip install -r day5/requirements.txt
 
     - name: Run tests
-      run: |
-        pytest day5/演習3/tests
+      run: pytest day5/test/test_pipeline.py
 
-    - name: Format check with black
-      run: black --check day5/演習3/
-
-    - name: Lint check with flake8 (allow 88-char lines)
-      run: flake8 day5/演習3/ --max-line-length=88

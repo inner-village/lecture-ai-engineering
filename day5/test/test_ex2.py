@@ -28,10 +28,16 @@ class DataLoader:
     @staticmethod
     def preprocess_titanic_data(data):
         if data is None:
-            raise ValueError("Titanicデータの読み込みに失敗しました。ファイルを確認してください。")
+            raise ValueError(
+                "Titanicデータの読み込みに失敗しました。ファイルを確認してください。"
+            )
 
         data = data.copy()
-        drop_cols = [col for col in ["PassengerId", "Name", "Ticket", "Cabin"] if col in data.columns]
+        drop_cols = [
+            col
+            for col in ["PassengerId", "Name", "Ticket", "Cabin"]
+            if col in data.columns
+        ]
         if drop_cols:
             data.drop(drop_cols, axis=1, inplace=True)
         if "Survived" in data.columns:
@@ -44,9 +50,19 @@ class DataValidator:
     @staticmethod
     def validate_titanic_data(data):
         if not isinstance(data, pd.DataFrame):
-            return False, [{"success": False, "error": "データはDataFrame形式である必要があります"}]
+            return False, [
+                {"success": False, "error": "データはDataFrame形式である必要があります"}
+            ]
 
-        required_columns = ["Pclass", "Sex", "Age", "SibSp", "Parch", "Fare", "Embarked"]
+        required_columns = [
+            "Pclass",
+            "Sex",
+            "Age",
+            "SibSp",
+            "Parch",
+            "Fare",
+            "Embarked",
+        ]
         missing = [col for col in required_columns if col not in data.columns]
         if missing:
             return False, [{"success": False, "missing_columns": missing}]
@@ -72,19 +88,25 @@ class ModelTester:
         numeric = ["Age", "Fare", "SibSp", "Parch"]
         categorical = ["Pclass", "Sex", "Embarked"]
 
-        numeric_transformer = Pipeline([
-            ("imputer", SimpleImputer(strategy="median")),
-            ("scaler", StandardScaler()),
-        ])
-        categorical_transformer = Pipeline([
-            ("imputer", SimpleImputer(strategy="most_frequent")),
-            ("encoder", OneHotEncoder(handle_unknown="ignore")),
-        ])
+        numeric_transformer = Pipeline(
+            [
+                ("imputer", SimpleImputer(strategy="median")),
+                ("scaler", StandardScaler()),
+            ]
+        )
+        categorical_transformer = Pipeline(
+            [
+                ("imputer", SimpleImputer(strategy="most_frequent")),
+                ("encoder", OneHotEncoder(handle_unknown="ignore")),
+            ]
+        )
 
-        return ColumnTransformer([
-            ("num", numeric_transformer, numeric),
-            ("cat", categorical_transformer, categorical),
-        ])
+        return ColumnTransformer(
+            [
+                ("num", numeric_transformer, numeric),
+                ("cat", categorical_transformer, categorical),
+            ]
+        )
 
     @staticmethod
     def train_model(X_train, y_train, model_params=None):
@@ -92,10 +114,12 @@ class ModelTester:
             model_params = {"n_estimators": 100, "random_state": 42}
 
         preprocessor = ModelTester.create_preprocessing_pipeline()
-        model = Pipeline([
-            ("preprocessor", preprocessor),
-            ("classifier", RandomForestClassifier(**model_params)),
-        ])
+        model = Pipeline(
+            [
+                ("preprocessor", preprocessor),
+                ("classifier", RandomForestClassifier(**model_params)),
+            ]
+        )
         model.fit(X_train, y_train)
         return model
 
@@ -142,10 +166,16 @@ def test_model_performance():
     data = DataLoader.load_titanic_data()
     assert data is not None, "Titanicデータの読み込みに失敗しました。"
     X, y = DataLoader.preprocess_titanic_data(data)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42
+    )
 
     model = ModelTester.train_model(X_train, y_train)
     metrics = ModelTester.evaluate_model(model, X_test, y_test)
 
-    assert ModelTester.compare_with_baseline(metrics), f"精度が低い: {metrics['accuracy']}"
-    assert metrics["inference_time"] < 1.0, f"推論時間が長い: {metrics['inference_time']}秒"
+    assert ModelTester.compare_with_baseline(
+        metrics
+    ), f"精度が低い: {metrics['accuracy']}"
+    assert (
+        metrics["inference_time"] < 1.0
+    ), f"推論時間が長い: {metrics['inference_time']}秒"
