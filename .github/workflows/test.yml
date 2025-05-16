@@ -20,3 +20,4 @@ jobs:
 
     - name: Run tests
       run: pytest day5/test/test_pipeline.py
+　　　run: pytest day5/test/test_ex2.py
