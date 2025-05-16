@@ -7,8 +7,7 @@ from sklearn.preprocessing import LabelEncoder
 def test_model_accuracy():
     model = joblib.load("day5/test/models/titanic_model.pkl")
 
-    # データ準備（main.py と完全一致）
-    df = pd.read_csv("data/titanic.csv")
+    df = pd.read_csv("day5/test/data/titanic.csv")
     df = df[["Pclass", "Sex", "Age", "Fare", "Survived"]].dropna()
     df["Sex"] = LabelEncoder().fit_transform(df["Sex"])
     df["Pclass"] = df["Pclass"].astype(float)
@@ -20,7 +19,6 @@ def test_model_accuracy():
     X = df[["Pclass", "Sex", "Age", "Fare"]]
     y = df["Survived"]
 
-    # main.py で使われる test_size=0.18, random_state=70 に合わせる（main.pyログ参照）
     _, X_test, _, y_test = train_test_split(X, y, test_size=0.18, random_state=70)
 
     y_pred = model.predict(X_test)
