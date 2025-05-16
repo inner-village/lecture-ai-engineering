@@ -9,7 +9,6 @@ from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
-#from great_expectations.data_context import EphemeralDataContext
 
 
 class DataLoader:
@@ -18,12 +17,19 @@ class DataLoader:
         if path:
             return pd.read_csv(path)
         else:
-            local_path = "data/Titanic.csv"
-            if os.path.exists(local_path):
-                return pd.read_csv(local_path)
+            test_path = "day5/test/data/titanic.csv"
+            if os.path.exists(test_path):
+                return pd.read_csv(test_path)
+            fallback_path = "data/Titanic.csv"
+            if os.path.exists(fallback_path):
+                return pd.read_csv(fallback_path)
+            return None
 
     @staticmethod
     def preprocess_titanic_data(data):
+        if data is None:
+            raise ValueError("Titanicデータの読み込みに失敗しました。ファイルを確認してください。")
+
         data = data.copy()
         drop_cols = [col for col in ["PassengerId", "Name", "Ticket", "Cabin"] if col in data.columns]
         if drop_cols:
@@ -58,13 +64,6 @@ class DataValidator:
 
         results = [{"success": cond, "result": None} for cond in conditions]
         return all(conditions), results
-
-        success = all(conditions)
-
-        results = [
-            {"success": cond} for cond in conditions
-        ]
-        return success, results
 
 
 class ModelTester:
@@ -128,6 +127,7 @@ class ModelTester:
 # テスト関数（pytestでの確認用）
 def test_data_validation():
     data = DataLoader.load_titanic_data()
+    assert data is not None, "Titanicデータの読み込みに失敗しました。"
     X, _ = DataLoader.preprocess_titanic_data(data)
     success, results = DataValidator.validate_titanic_data(X)
     assert success, "データバリデーションに失敗"
@@ -140,6 +140,7 @@ def test_data_validation():
 
 def test_model_performance():
     data = DataLoader.load_titanic_data()
+    assert data is not None, "Titanicデータの読み込みに失敗しました。"
     X, y = DataLoader.preprocess_titanic_data(data)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
@@ -148,26 +149,3 @@ def test_model_performance():
 
     assert ModelTester.compare_with_baseline(metrics), f"精度が低い: {metrics['accuracy']}"
     assert metrics["inference_time"] < 1.0, f"推論時間が長い: {metrics['inference_time']}秒"
-
-
-if __name__ == "__main__":
-    data = DataLoader.load_titanic_data()
-    X, y = DataLoader.preprocess_titanic_data(data)
-
-    success, results = DataValidator.validate_titanic_data(X)
-    print(f"データ検証結果: {'成功' if success else '失敗'}")
-    for r in results:
-        print(f"成功: {r['success']}, 結果: {r.get('result') or r.get('error')}")
-
-    if not success:
-        print("データ検証に失敗しました。処理を終了します。")
-        exit(1)
-
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    model = ModelTester.train_model(X_train, y_train)
-    metrics = ModelTester.evaluate_model(model, X_test, y_test)
-
-    print(f"精度: {metrics['accuracy']:.4f}")
-    print(f"推論時間: {metrics['inference_time']:.4f}秒")
-    ModelTester.save_model(model)
-    print("ベースライン比較:", "合格" if ModelTester.compare_with_baseline(metrics) else "不合格")
