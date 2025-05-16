@@ -18,7 +18,7 @@ jobs:
     - name: Install dependencies
       run: pip install -r day5/requirements.txt
 
-    - name: Run tests (pipeline)
-      run: 
-	pytest day5/test/test_pipeline.py
-	pytest day5/test/test_ex2.py
+    - name: Run tests
+      run: |
+        pytest day5/test/test_pipeline.py
+        pytest day5/test/test_ex2.py
