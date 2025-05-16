@@ -5,7 +5,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import LabelEncoder
 
 def test_model_accuracy():
-    model = joblib.load("models/titanic_model.pkl")
+    model = joblib.load("day5/test/models/titanic_model.pkl")
 
     # データ準備（main.py と完全一致）
     df = pd.read_csv("data/titanic.csv")
