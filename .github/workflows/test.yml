@@ -18,13 +18,12 @@ jobs:
     - name: Install dependencies
       run: pip install -r day5/requirements.txt
 
-    - name: Run format check (black)
-      run: black --check day5/
-
-    - name: Run lint check (flake8)
-      run: flake8 day5/
-
-    - name: Run tests (pipeline)
+    - name: Run tests
       run: |
-        pytest day5/test/test_pipeline.py
-        pytest day5/test/test_ex2.py
+        pytest day5/演習3/tests
+
+    - name: Format check with black
+      run: black --check day5/演習3/
+
+    - name: Lint check with flake8
+      run: flake8 day5/演習3/
