@@ -8,10 +8,7 @@ import great_expectations as gx
 warnings.filterwarnings("ignore")
 
 # テスト用データパスを定義
-DATA_PATH = os.path.join(
-    os.path.dirname(__file__),
-    "../data/Titanic.csv",
-)
+DATA_PATH = os.path.join(os.path.dirname(__file__), "../data/Titanic.csv")
 
 
 @pytest.fixture
@@ -39,9 +36,7 @@ def test_data_columns(sample_data):
         "Survived",
     ]
     for col in expected_columns:
-        assert (
-            col in sample_data.columns
-        ), f"カラム '{col}' がデータセットに存在しません"
+        assert col in sample_data.columns, f"カラム '{col}' がデータセットに存在しません"
 
 
 def test_data_types(sample_data):
@@ -54,14 +49,11 @@ def test_data_types(sample_data):
 
     categorical_columns = ["Sex", "Embarked"]
     for col in categorical_columns:
-        assert (
-            sample_data[col].dtype == "object"
-        ), f"カラム '{col}' がカテゴリカル型ではありません"
+        assert sample_data[col].dtype == "object", f"カラム '{col}' がカテゴリカル型ではありません"
 
     survived_vals = sample_data["Survived"].dropna().unique()
-    assert (
-        set(survived_vals).issubset({"0", "1"})
-        or set(survived_vals).issubset({0, 1})
+    assert set(survived_vals).issubset({"0", "1"}) or set(survived_vals).issubset(
+        {0, 1}
     ), "Survivedカラムには0, 1のみ含まれるべきです"
 
 
@@ -69,10 +61,9 @@ def test_missing_values_acceptable(sample_data):
     """欠損値の許容範囲を確認"""
     for col in sample_data.columns:
         missing_rate = sample_data[col].isna().mean()
-        assert missing_rate < 0.8, (
-            f"カラム '{col}' の欠損率が80%を超えています: "
-            f"{missing_rate:.2%}"
-        )
+        assert (
+            missing_rate < 0.8
+        ), f"カラム '{col}' の欠損率が80%を超えています: {missing_rate:.2%}"
 
 
 def test_value_ranges(sample_data):
@@ -81,12 +72,8 @@ def test_value_ranges(sample_data):
     data_source = context.data_sources.add_pandas("pandas")
     data_asset = data_source.add_dataframe_asset(name="pd dataframe asset")
 
-    batch_definition = data_asset.add_batch_definition_whole_dataframe(
-        "batch definition"
-    )
-    batch = batch_definition.get_batch(
-        batch_parameters={"dataframe": sample_data}
-    )
+    batch_definition = data_asset.add_batch_definition_whole_dataframe("batch definition")
+    batch = batch_definition.get_batch(batch_parameters={"dataframe": sample_data})
 
     results = []
 
@@ -99,9 +86,7 @@ def test_value_ranges(sample_data):
         "Fare",
         "Embarked",
     ]
-    missing_columns = [
-        col for col in required_columns if col not in sample_data.columns
-    ]
+    missing_columns = [col for col in required_columns if col not in sample_data.columns]
     if missing_columns:
         print(f"警告: 以下のカラムがありません: {missing_columns}")
         return False, [{"success": False, "missing_columns": missing_columns}]
