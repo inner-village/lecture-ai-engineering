@@ -12,6 +12,7 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 
+# テスト用データとモデルパスを定義
 DATA_PATH = os.path.join(os.path.dirname(__file__), "../data/Titanic.csv")
 MODEL_DIR = os.path.join(os.path.dirname(__file__), "../models")
 MODEL_PATH = os.path.join(MODEL_DIR, "titanic_model.pkl")
@@ -19,6 +20,7 @@ MODEL_PATH = os.path.join(MODEL_DIR, "titanic_model.pkl")
 
 @pytest.fixture
 def sample_data():
+    """テスト用データセットを読み込む"""
     if not os.path.exists(DATA_PATH):
         pytest.skip("テストデータが存在しないためスキップ")
     return pd.read_csv(DATA_PATH)
@@ -26,11 +28,15 @@ def sample_data():
 
 @pytest.fixture
 def preprocessor():
+    """前処理パイプラインを定義"""
     numeric_features = ["Age", "Pclass", "SibSp", "Parch", "Fare"]
     categorical_features = ["Sex", "Embarked"]
 
     numeric_transformer = Pipeline(
-        [("imputer", SimpleImputer(strategy="median")), ("scaler", StandardScaler())]
+        [
+            ("imputer", SimpleImputer(strategy="median")),
+            ("scaler", StandardScaler()),
+        ]
     )
 
     categorical_transformer = Pipeline(
@@ -50,8 +56,10 @@ def preprocessor():
 
 @pytest.fixture
 def train_model(sample_data, preprocessor):
+    """モデルの学習とテストデータの準備"""
     X = sample_data.drop("Survived", axis=1)
     y = sample_data["Survived"].astype(int)
+
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42
     )
@@ -59,7 +67,10 @@ def train_model(sample_data, preprocessor):
     model = Pipeline(
         [
             ("preprocessor", preprocessor),
-            ("classifier", RandomForestClassifier(n_estimators=100, random_state=42)),
+            (
+                "classifier",
+                RandomForestClassifier(n_estimators=100, random_state=42),
+            ),
         ]
     )
 
@@ -73,12 +84,14 @@ def train_model(sample_data, preprocessor):
 
 
 def test_model_exists():
+    """モデルファイルが存在するか確認"""
     if not os.path.exists(MODEL_PATH):
         pytest.skip("モデルファイルが存在しないためスキップします")
     assert os.path.exists(MODEL_PATH), "モデルファイルが存在しません"
 
 
 def test_model_accuracy(train_model):
+    """モデルの精度を検証"""
     model, X_test, y_test = train_model
     y_pred = model.predict(X_test)
     accuracy = accuracy_score(y_test, y_pred)
@@ -86,6 +99,7 @@ def test_model_accuracy(train_model):
 
 
 def test_model_inference_time(train_model):
+    """モデルの推論時間を検証"""
     model, X_test, _ = train_model
     start_time = time.time()
     model.predict(X_test)
@@ -95,8 +109,10 @@ def test_model_inference_time(train_model):
 
 
 def test_model_reproducibility(sample_data, preprocessor):
+    """モデルの再現性を検証"""
     X = sample_data.drop("Survived", axis=1)
     y = sample_data["Survived"].astype(int)
+
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42
     )
@@ -104,13 +120,20 @@ def test_model_reproducibility(sample_data, preprocessor):
     model1 = Pipeline(
         [
             ("preprocessor", preprocessor),
-            ("classifier", RandomForestClassifier(n_estimators=100, random_state=42)),
+            (
+                "classifier",
+                RandomForestClassifier(n_estimators=100, random_state=42),
+            ),
         ]
     )
+
     model2 = Pipeline(
         [
             ("preprocessor", preprocessor),
-            ("classifier", RandomForestClassifier(n_estimators=100, random_state=42)),
+            (
+                "classifier",
+                RandomForestClassifier(n_estimators=100, random_state=42),
+            ),
         ]
     )
 
