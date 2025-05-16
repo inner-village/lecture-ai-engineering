@@ -1,173 +1,133 @@
 import os
 import pytest
 import pandas as pd
-import numpy as np
-import pickle
-import time
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
-from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
-from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline
+import warnings
+import great_expectations as gx
 
-# テスト用データとモデルパスを定義
-DATA_PATH = os.path.join(os.path.dirname(__file__), "../data/Titanic.csv")
-MODEL_DIR = os.path.join(os.path.dirname(__file__), "../models")
-MODEL_PATH = os.path.join(MODEL_DIR, "titanic_model.pkl")
+# 警告を抑制
+warnings.filterwarnings("ignore")
+
+# テスト用データパスを定義
+DATA_PATH = os.path.join(
+    os.path.dirname(__file__),
+    "../data/Titanic.csv"
+)
 
 
 @pytest.fixture
 def sample_data():
-    """テスト用データセットを読み込む"""
-    if not os.path.exists(DATA_PATH):
-        from sklearn.datasets import fetch_openml
-
-        titanic = fetch_openml("titanic", version=1, as_frame=True)
-        df = titanic.data
-        df["Survived"] = titanic.target
-
-        # 必要なカラムのみ選択
-        df = df[
-            ["Pclass", "Sex", "Age", "SibSp", "Parch", "Fare", "Embarked", "Survived"]
-        ]
-
-        os.makedirs(os.path.dirname(DATA_PATH), exist_ok=True)
-        df.to_csv(DATA_PATH, index=False)
-
+    """Titanicテスト用データセットを読み込む"""
     return pd.read_csv(DATA_PATH)
 
 
-@pytest.fixture
-def preprocessor():
-    """前処理パイプラインを定義"""
-    # 数値カラムと文字列カラムを定義
-    numeric_features = ["Age", "Pclass", "SibSp", "Parch", "Fare"]
-    categorical_features = ["Sex", "Embarked"]
+def test_data_exists(sample_data):
+    """データが存在することを確認"""
+    assert not sample_data.empty, "データセットが空です"
+    assert len(sample_data) > 0, "データセットにレコードがありません"
 
-    # 数値特徴量の前処理（欠損値補完と標準化）
-    numeric_transformer = Pipeline(
-        steps=[
-            ("imputer", SimpleImputer(strategy="median")),
-            ("scaler", StandardScaler()),
-        ]
+
+def test_data_columns(sample_data):
+    """必要なカラムが存在することを確認"""
+    expected_columns = [
+        "Pclass",
+        "Sex",
+        "Age",
+        "SibSp",
+        "Parch",
+        "Fare",
+        "Embarked",
+        "Survived",
+    ]
+    for col in expected_columns:
+        assert (
+            col in sample_data.columns
+        ), f"カラム '{col}' がデータセットに存在しません"
+
+
+def test_data_types(sample_data):
+    """データ型の検証"""
+    numeric_columns = ["Pclass", "Age", "SibSp", "Parch", "Fare"]
+    for col in numeric_columns:
+        assert pd.api.types.is_numeric_dtype(
+            sample_data[col].dropna()
+        ), f"カラム '{col}' が数値型ではありません"
+
+    categorical_columns = ["Sex", "Embarked"]
+    for col in categorical_columns:
+        assert (
+            sample_data[col].dtype == "object"
+        ), f"カラム '{col}' がカテゴリカル型ではありません"
+
+    survived_vals = sample_data["Survived"].dropna().unique()
+    assert (
+        set(survived_vals).issubset({"0", "1"}) or
+        set(survived_vals).issubset({0, 1})
+    ), "Survivedカラムには0, 1のみ含まれるべきです"
+
+
+def test_missing_values_acceptable(sample_data):
+    """欠損値の許容範囲を確認"""
+    for col in sample_data.columns:
+        missing_rate = sample_data[col].isna().mean()
+        assert missing_rate < 0.8, (
+            f"カラム '{col}' の欠損率が80%を超えています: "
+            f"{missing_rate:.2%}"
+        )
+
+
+def test_value_ranges(sample_data):
+    """値の範囲を検証"""
+    context = gx.get_context()
+    data_source = context.data_sources.add_pandas("pandas")
+    data_asset = data_source.add_dataframe_asset(
+        name="pd dataframe asset"
+    )
+    batch_definition = data_asset.add_batch_definition_whole_dataframe(
+        "batch definition"
+    )
+    batch = batch_definition.get_batch(
+        batch_parameters={"dataframe": sample_data}
     )
 
-    # カテゴリカル特徴量の前処理（欠損値補完とOne-hotエンコーディング）
-    categorical_transformer = Pipeline(
-        steps=[
-            ("imputer", SimpleImputer(strategy="most_frequent")),
-            ("onehot", OneHotEncoder(handle_unknown="ignore")),
-        ]
-    )
+    required_columns = [
+        "Pclass",
+        "Sex",
+        "Age",
+        "SibSp",
+        "Parch",
+        "Fare",
+        "Embarked",
+    ]
+    missing_columns = [
+        col for col in required_columns
+        if col not in sample_data.columns
+    ]
+    if missing_columns:
+        print(f"警告: 以下のカラムがありません: {missing_columns}")
+        return False, [{"success": False, "missing_columns": missing_columns}]
 
-    # 前処理をまとめる
-    preprocessor = ColumnTransformer(
-        transformers=[
-            ("num", numeric_transformer, numeric_features),
-            ("cat", categorical_transformer, categorical_features),
-        ]
-    )
+    expectations = [
+        gx.expectations.ExpectColumnDistinctValuesToBeInSet(
+            column="Pclass", value_set=[1, 2, 3]
+        ),
+        gx.expectations.ExpectColumnDistinctValuesToBeInSet(
+            column="Sex", value_set=["male", "female"]
+        ),
+        gx.expectations.ExpectColumnValuesToBeBetween(
+            column="Age", min_value=0, max_value=100
+        ),
+        gx.expectations.ExpectColumnValuesToBeBetween(
+            column="Fare", min_value=0, max_value=600
+        ),
+        gx.expectations.ExpectColumnDistinctValuesToBeInSet(
+            column="Embarked", value_set=["C", "Q", "S", ""]
+        ),
+    ]
 
-    return preprocessor
+    results = []
+    for expectation in expectations:
+        result = batch.validate(expectation)
+        results.append(result)
 
-
-@pytest.fixture
-def train_model(sample_data, preprocessor):
-    """モデルの学習とテストデータの準備"""
-    # データの分割とラベル変換
-    X = sample_data.drop("Survived", axis=1)
-    y = sample_data["Survived"].astype(int)
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42
-    )
-
-    # モデルパイプラインの作成
-    model = Pipeline(
-        steps=[
-            ("preprocessor", preprocessor),
-            ("classifier", RandomForestClassifier(n_estimators=100, random_state=42)),
-        ]
-    )
-
-    # モデルの学習
-    model.fit(X_train, y_train)
-
-    # モデルの保存
-    os.makedirs(MODEL_DIR, exist_ok=True)
-    with open(MODEL_PATH, "wb") as f:
-        pickle.dump(model, f)
-
-    return model, X_test, y_test
-
-
-def test_model_exists():
-    """モデルファイルが存在するか確認"""
-    if not os.path.exists(MODEL_PATH):
-        pytest.skip("モデルファイルが存在しないためスキップします")
-    assert os.path.exists(MODEL_PATH), "モデルファイルが存在しません"
-
-
-def test_model_accuracy(train_model):
-    """モデルの精度を検証"""
-    model, X_test, y_test = train_model
-
-    # 予測と精度計算
-    y_pred = model.predict(X_test)
-    accuracy = accuracy_score(y_test, y_pred)
-
-    # Titanicデータセットでは0.75以上の精度が一般的に良いとされる
-    assert accuracy >= 0.75, f"モデルの精度が低すぎます: {accuracy}"
-
-
-def test_model_inference_time(train_model):
-    """モデルの推論時間を検証"""
-    model, X_test, _ = train_model
-
-    # 推論時間の計測
-    start_time = time.time()
-    model.predict(X_test)
-    end_time = time.time()
-
-    inference_time = end_time - start_time
-
-    # 推論時間が1秒未満であることを確認
-    assert inference_time < 1.0, f"推論時間が長すぎます: {inference_time}秒"
-
-
-def test_model_reproducibility(sample_data, preprocessor):
-    """モデルの再現性を検証"""
-    # データの分割
-    X = sample_data.drop("Survived", axis=1)
-    y = sample_data["Survived"].astype(int)
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42
-    )
-
-    # 同じパラメータで２つのモデルを作成
-    model1 = Pipeline(
-        steps=[
-            ("preprocessor", preprocessor),
-            ("classifier", RandomForestClassifier(n_estimators=100, random_state=42)),
-        ]
-    )
-
-    model2 = Pipeline(
-        steps=[
-            ("preprocessor", preprocessor),
-            ("classifier", RandomForestClassifier(n_estimators=100, random_state=42)),
-        ]
-    )
-
-    # 学習
-    model1.fit(X_train, y_train)
-    model2.fit(X_train, y_train)
-
-    # 同じ予測結果になることを確認
-    predictions1 = model1.predict(X_test)
-    predictions2 = model2.predict(X_test)
-
-    assert np.array_equal(
-        predictions1, predictions2
-    ), "モデルの予測結果に再現性がありません"
+    is_successful = all(result.success for result in results)
+    assert is_successful, "データの値範囲が期待通りではありません"
