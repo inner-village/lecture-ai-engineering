@@ -25,5 +25,5 @@ jobs:
     - name: Format check with black
       run: black --check day5/演習3/
 
-    - name: Lint check with flake8
-      run: flake8 day5/演習3/
+    - name: Lint check with flake8 (allow 88-char lines)
+      run: flake8 day5/演習3/ --max-line-length=88
