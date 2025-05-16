@@ -9,7 +9,8 @@ warnings.filterwarnings("ignore")
 
 # テスト用データパスを定義
 DATA_PATH = os.path.join(
-    os.path.dirname(__file__), "../data/Titanic.csv"
+    os.path.dirname(__file__),
+    "../data/Titanic.csv",
 )
 
 
@@ -38,28 +39,25 @@ def test_data_columns(sample_data):
         "Survived",
     ]
     for col in expected_columns:
-        assert col in sample_data.columns, (
-            f"カラム '{col}' がデータセットに存在しません"
-        )
+        assert (
+            col in sample_data.columns
+        ), f"カラム '{col}' がデータセットに存在しません"
 
 
 def test_data_types(sample_data):
     """データ型の検証"""
-    # 数値型カラム
     numeric_columns = ["Pclass", "Age", "SibSp", "Parch", "Fare"]
     for col in numeric_columns:
         assert pd.api.types.is_numeric_dtype(
             sample_data[col].dropna()
         ), f"カラム '{col}' が数値型ではありません"
 
-    # カテゴリカルカラム
     categorical_columns = ["Sex", "Embarked"]
     for col in categorical_columns:
-        assert sample_data[col].dtype == "object", (
-            f"カラム '{col}' がカテゴリカル型ではありません"
-        )
+        assert (
+            sample_data[col].dtype == "object"
+        ), f"カラム '{col}' がカテゴリカル型ではありません"
 
-    # 目的変数
     survived_vals = sample_data["Survived"].dropna().unique()
     assert (
         set(survived_vals).issubset({"0", "1"})
